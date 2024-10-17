@@ -27,20 +27,28 @@ class Jarvis:
         nothing_was_said = True
         with sr.Microphone() as source:
             text = None
-        while nothing_was_said:
-            try:
-                print('getting rid of ambience')
-                self.recognizer.adjust_for_ambient_noise(source)
-                print('listening')
-                word = self.recognizer.listen(source)
-                print('translating')
-                text = self.recognizer.recognize_google(word).lower()
-                print(f'the text that was said is {text}')
-                #finish up here
-                if('open' in text and 'close' in text or 'clothes' in text):
+            while nothing_was_said:
+                try:
+                    print('getting rid of ambience')
+                    self.recognizer.adjust_for_ambient_noise(source)
+                    print('listening')
+                    word = self.recognizer.listen(source)
+                    print('translating')
+                    text = self.recognizer.recognize_google(word).lower()
+                    print(f'the text that was said is {text}')
+                    #finish up here
+                    if('open' in text and ('close' in text or 'clothes' in text)):
+                        None
+                    if('open' in text):
+                        self.open_was_said = True
+                        nothing_was_said = False
+                    if('close' in text or 'clothes' in text):
+                        self.close_was_said = True
+                        nothing_was_said = False
+                except sr.UnknownValueError:
                     None
-            except sr.UnknownValueError:
-                None
+        self.open_app() if self.open_was_said else None
+
     def main_loop(self):
         with sr.Microphone() as source:
             text = None
