@@ -1,8 +1,6 @@
 import speech_recognition as sr
 import pyttsx3
 import os
-import time
-import pyttsx3
 
 
 class Jarvis:
@@ -10,74 +8,92 @@ class Jarvis:
         self.wake_word = "jarvis"
         self.recognizer = sr.Recognizer()
         self.wake_word_said = False
-        self.what_to_do_with_app = None
         self.open_was_said = False
         self.close_was_said = False
 
-    # work on open or close first find if there is maybe a narrator
-    # then work on opening app with narrator what would you like me to do?
-    # then close based on what I know with opening
-    def open_app(self):
-        print("In open app")
-
-    def close_app(self):
-        print('In close app')
-
-    def open_or_close_app(self):
+    def _speak(self, message):
         narrator = pyttsx3.init()
+
         narrator.setProperty('rate', 150)
         narrator.setProperty('volume', 1)
-        narrator.say("What would you like me to open or close?")
+
+        narrator.say(message)
         narrator.runAndWait()
-        nothing_was_said = True
+
+    def splitting_text(self, text_to_split):
+        keyword = 'open' if self.open_was_said else 'close'
+        words = text_to_split.split()
+        try:
+            keyword_index = words.index(keyword)
+            app_name = " ".join(words[keyword_index + 1:]).strip()
+            if app_name:
+                return app_name
+            else:
+                self._speak(f"No application specified after '{keyword}'.")
+        except ValueError:
+            self._speak(f"Keyword '{keyword}' not found in the command.")
+        return None
+
+    def open_app(self, app_to_open):
+        if app_to_open:
+            print(f"Opening: {app_to_open}")
+            self._speak(f"Opening {app_to_open}")
+            # Add your logic to open the app here (e.g., os.system())
+        else:
+            self._speak("No application name provided to open.")
+
+    def close_app(self, app_to_close):
+        if app_to_close:
+            print(f"Closing: {app_to_close}")
+            self._speak(f"Closing {app_to_close}")
+            # Add your logic to close the app here (e.g., os.system())
+        else:
+            self._speak("No application name provided to close.")
+
+    def open_or_close_app(self):
+        self._speak("What would you like me to open or close? Please say one command at a time. or if you did not mean "
+                    "to call just say stop.")
+        still_listening = True
         with sr.Microphone() as source:
-            while nothing_was_said:
+            while still_listening:
                 try:
-                    print('getting rid of ambience')
                     self.recognizer.adjust_for_ambient_noise(source)
-                    print('listening')
                     word = self.recognizer.listen(source)
-                    print('translating')
                     text = self.recognizer.recognize_google(word).lower()
-                    print(f'the text that was said is {text}')
-                    # finish up here
-                    if 'open' in text and ('close' in text or 'clothes' in text):
-                        None
-                    elif 'open' in text:
+
+                    if 'open' in text:
                         self.open_was_said = True
-                        nothing_was_said = False
-                    elif 'close' in text or 'clothes' in text:
+                        app_name = self.splitting_text(text)
+                        self.open_app(app_name)
+                        break
+                    elif 'close' in text:
                         self.close_was_said = True
-                        nothing_was_said = False
+                        app_name = self.splitting_text(text)
+                        self.close_app(app_name)
+                        break
+                    elif text == "stop":
+                        still_listening = False
+                    else:
+                        self._speak("I didn't catch a valid command. Please say 'open' or 'close'.")
                 except sr.UnknownValueError:
-                    None
-        self.open_app() if self.open_was_said else None
+                    self._speak("Sorry, I didn't understand. Could you repeat that?")
+        self.main_loop()
 
     def main_loop(self):
+        self._speak("Hello, just speak my name and I will be able to assist you.")
         with sr.Microphone() as source:
-            while self.wake_word_said is False:
+            while not self.wake_word_said:
                 try:
-                    print('getting rid of ambience')
                     self.recognizer.adjust_for_ambient_noise(source)
-                    print('listening')
                     word = self.recognizer.listen(source)
-                    print('translating')
                     text = self.recognizer.recognize_google(word).lower()
-                    print(f'the text that was said is {text}')
-                    if 'open' in text and 'close' in text:
-                        None
-                    elif self.wake_word in text:
+                    print(f"User said: {text}")
+
+                    if self.wake_word in text:
                         self.wake_word_said = True
-                    if 'open' in text and self.wake_word_said:
-                        self.open_was_said = True
-                    elif 'close' in text or 'clothes' in text and self.wake_word_said:
-                        self.close_was_said = True
+                        self._speak("Yes, I'm here. How can I assist?")
+                        self.open_or_close_app()
                 except sr.UnknownValueError:
-                    None
-            self.open_app() if self.open_was_said else None
-            self.close_app() if self.close_was_said else None
-            self.open_or_close_app() if self.open_was_said is False and self.close_was_said is False else self.main_loop()
-
-
+                    print("Listening for wake word...")
 jarvis = Jarvis()
 jarvis.main_loop()
