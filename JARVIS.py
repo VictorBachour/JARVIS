@@ -1,6 +1,8 @@
 import speech_recognition as sr
 import pyttsx3
 import os
+import shutil
+import subprocess
 
 
 class Jarvis:
@@ -33,14 +35,10 @@ class Jarvis:
         except ValueError:
             self._speak(f"Keyword '{keyword}' not found in the command.")
         return None
-
+#prompt the user to input where his apps are and to paste the directory in command prompt this will only be done once
+#to make it done once check to see if the notepad is empty if empty prompt user if not move on to main_loop
     def open_app(self, app_to_open):
-        if app_to_open:
-            print(f"Opening: {app_to_open}")
-            self._speak(f"Opening {app_to_open}")
-            # Add your logic to open the app here (e.g., os.system())
-        else:
-            self._speak("No application name provided to open.")
+        None
 
     def close_app(self, app_to_close):
         if app_to_close:
