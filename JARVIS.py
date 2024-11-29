@@ -1,22 +1,34 @@
 import speech_recognition as sr
 import pyttsx3
 import os
-import shutil
 import subprocess
-
 
 class Jarvis:
     def __init__(self):
         self.wake_word = "jarvis"
         self.recognizer = sr.Recognizer()
-        self.wake_word_said = False
         self.open_was_said = False
         self.close_was_said = False
+        self.apps_file = "folder_that_leads_to_apps.txt"
+
+        if os.path.exists(self.apps_file):
+            with open(self.apps_file, 'r') as f:
+                folder_path = f.read().strip()
+
+            if os.path.exists(folder_path) and os.path.isdir(folder_path):
+                self.open_app('DRAGON BALL Sparking! ZERO')
+            else:
+                self._speak("Saved folder path is invalid or does not exist.")
+                self.prompt_user_for_apps_folder()
+        else:
+            self._speak("Apps file not found. Prompting user for apps folder.")
+            self.prompt_user_for_apps_folder()
+
 
     def _speak(self, message):
         narrator = pyttsx3.init()
 
-        narrator.setProperty('rate', 150)
+        narrator.setProperty('rate', 190)
         narrator.setProperty('volume', 1)
 
         narrator.say(message)
@@ -35,10 +47,42 @@ class Jarvis:
         except ValueError:
             self._speak(f"Keyword '{keyword}' not found in the command.")
         return None
-#prompt the user to input where his apps are and to paste the directory in command prompt this will only be done once
-#to make it done once check to see if the notepad is empty if empty prompt user if not move on to main_loop
+
+    # prompt the user to input where his apps are and to paste the directory in command prompt this will only be done
+    # once to make it done once check to see if the notepad is empty if empty prompt user if not move on to main_loop
     def open_app(self, app_to_open):
-        None
+
+        if not app_to_open:
+            self._speak("No application name provided to open.")
+            return
+
+        if os.path.exists(self.apps_file):
+            with open(self.apps_file, 'r') as f:
+                folder_path = f.read().strip()
+
+            if folder_path and os.path.isdir(folder_path):
+                app_path = os.path.join(folder_path, app_to_open)
+                if not os.path.exists(app_path):
+                    app_path = os.path.join(folder_path, app_to_open + ".lnk")
+                if not os.path.exists(app_path):
+                    app_path = os.path.join(folder_path, app_to_open + ".exe")
+                print(f"Debug: Looking for app at {app_path}")  # Debug log
+                if os.path.exists(app_path):
+                    try:
+                        app_path = f'"{app_path}"'
+                        subprocess.run(app_path, check=True, shell=True)
+                        self._speak(f"Currently opening {app_to_open}.")
+                    except Exception as e:
+                        self._speak(f"Failed to open {app_to_open}. Error: {str(e)}")
+                else:
+                    self._speak(f"{app_to_open} does not exist in the specified folder.")
+            else:
+                self._speak("Apps folder path is invalid or not set.")
+                self.prompt_user_for_apps_folder()
+        else:
+            self._speak("Apps file not found. Please set up the folder again.")
+            self.prompt_user_for_apps_folder()
+
 
     def close_app(self, app_to_close):
         if app_to_close:
@@ -63,11 +107,13 @@ class Jarvis:
                         self.open_was_said = True
                         app_name = self.splitting_text(text)
                         self.open_app(app_name)
+                        self.open_was_said = False
                         break
                     elif 'close' in text:
                         self.close_was_said = True
                         app_name = self.splitting_text(text)
                         self.close_app(app_name)
+                        self.close_was_said = False
                         break
                     elif text == "stop":
                         still_listening = False
@@ -75,23 +121,46 @@ class Jarvis:
                         self._speak("I didn't catch a valid command. Please say 'open' or 'close'.")
                 except sr.UnknownValueError:
                     self._speak("Sorry, I didn't understand. Could you repeat that?")
-        self.main_loop()
+
 
     def main_loop(self):
         self._speak("Hello, just speak my name and I will be able to assist you.")
         with sr.Microphone() as source:
-            while not self.wake_word_said:
+            while True:
                 try:
+                    print("now here")
                     self.recognizer.adjust_for_ambient_noise(source)
                     word = self.recognizer.listen(source)
                     text = self.recognizer.recognize_google(word).lower()
-                    print(f"User said: {text}")
-
                     if self.wake_word in text:
-                        self.wake_word_said = True
-                        self._speak("Yes, I'm here. How can I assist?")
                         self.open_or_close_app()
                 except sr.UnknownValueError:
-                    print("Listening for wake word...")
+                    None
+
+    def prompt_user_for_apps_folder(self):
+        folder_is_valid = False
+
+        self._speak("Great to get started please create a folder that contains any shortcuts "
+                    "or executable files of the applications you want me to control. Then, provide the folder path.")
+        while folder_is_valid is False:
+            folder_path = input("Enter the full path to the folder containing your apps: ")
+            if os.path.isdir(folder_path):
+                self._speak(f"Great! I'll now save the app paths in a file.")
+                self.save_app_paths(folder_path)
+                folder_is_valid = True
+            else:
+                self._speak("The folder path given does not exist. Please try again.")
+    def save_app_paths(self, folder_path):
+        try:
+            with open("folder_that_leads_to_apps.txt", "w") as f:
+                f.write(folder_path)
+                self._speak("Folder path saved successfully.")
+                self.main_loop()
+        except Exception as e:
+            self._speak("An error occurred")
+            self.prompt_user_for_apps_folder()
+
+
+
+
 jarvis = Jarvis()
-jarvis.main_loop()
