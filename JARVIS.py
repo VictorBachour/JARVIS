@@ -16,7 +16,7 @@ class Jarvis:
                 folder_path = f.read().strip()
 
             if os.path.exists(folder_path) and os.path.isdir(folder_path):
-                self.open_app('DRAGON BALL Sparking! ZERO')
+                self.close_app('Spotify.lnk')
             else:
                 self._speak("Saved folder path is invalid or does not exist.")
                 self.prompt_user_for_apps_folder()
@@ -66,7 +66,8 @@ class Jarvis:
                     app_path = os.path.join(folder_path, app_to_open + ".lnk")
                 if not os.path.exists(app_path):
                     app_path = os.path.join(folder_path, app_to_open + ".exe")
-                print(f"Debug: Looking for app at {app_path}")  # Debug log
+                if not os.path.exists(app_path):
+                    app_path = os.path.join(folder_path, app_to_open + ".url")
                 if os.path.exists(app_path):
                     try:
                         app_path = f'"{app_path}"'
@@ -85,12 +86,44 @@ class Jarvis:
 
 
     def close_app(self, app_to_close):
-        if app_to_close:
-            print(f"Closing: {app_to_close}")
-            self._speak(f"Closing {app_to_close}")
-            # Add your logic to close the app here (e.g., os.system())
-        else:
-            self._speak("No application name provided to close.")
+        try:
+            os.system(f"taskkill /f /im {app_to_close}")
+            self._speak(f"Closed {app_to_close}")
+        except Exception as e:(
+            self._speak(f"Failed to close {app_to_close}. Error: {e}"))
+
+        # if os.path.exists(self.apps_file):
+        #     with open(self.apps_file, 'r') as f:
+        #         folder_path = f.read().strip()
+        #
+        #     if folder_path and os.path.isdir(folder_path):
+        #         app_path = os.path.join(folder_path, app_to_close)
+        #         if not os.path.exists(app_path):
+        #             app_path = os.path.join(folder_path, app_to_close + ".lnk")
+        #         if not os.path.exists(app_path):
+        #             app_path = os.path.join(folder_path, app_to_close + ".exe")
+        #         if not os.path.exists(app_path):
+        #             app_path = os.path.join(folder_path, app_to_close + ".url")
+        #         if os.path.exists(app_path):
+        #             try:
+        #                 os.system(f"taskkill /f /im {app_to_close}")
+        #                 self._speak(f"Closed {app_to_close}")
+        #             except Exception as e:
+        #                 self._speak(f"Failed to close {app_to_close}. Error: {e}")
+        #         else:
+        #             self._speak(f"{app_to_close} does not exist in the specified folder.")
+        #     else:
+        #         self._speak("Apps folder path is invalid or not set.")
+        #         self.prompt_user_for_apps_folder()
+        # else:
+        #     self._speak("Apps file not found. Please set up the folder again.")
+        #     self.prompt_user_for_apps_folder()
+        #
+        # try:
+        #     os.system(f"taskkill /f /im {app_to_close}")
+        #     self._speak(f"Closed {app_to_close}")
+        # except Exception as e:
+        #     self._speak(f"Failed to close {app_to_close}. Error: {e}")
 
     def open_or_close_app(self):
         self._speak("What would you like me to open or close? Please say one command at a time. or if you did not mean "
