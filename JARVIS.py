@@ -2,6 +2,7 @@ import speech_recognition as sr
 import pyttsx3
 import os
 import subprocess
+import psutil
 
 class Jarvis:
     def __init__(self):
@@ -16,14 +17,13 @@ class Jarvis:
                 folder_path = f.read().strip()
 
             if os.path.exists(folder_path) and os.path.isdir(folder_path):
-                self.close_app('Spotify.lnk')
+                self.open_app('Spotify')
             else:
                 self._speak("Saved folder path is invalid or does not exist.")
                 self.prompt_user_for_apps_folder()
         else:
             self._speak("Apps file not found. Prompting user for apps folder.")
             self.prompt_user_for_apps_folder()
-
 
     def _speak(self, message):
         narrator = pyttsx3.init()
@@ -60,21 +60,21 @@ class Jarvis:
             with open(self.apps_file, 'r') as f:
                 folder_path = f.read().strip()
 
-            if folder_path and os.path.isdir(folder_path):
-                app_path = os.path.join(folder_path, app_to_open)
-                if not os.path.exists(app_path):
-                    app_path = os.path.join(folder_path, app_to_open + ".lnk")
-                if not os.path.exists(app_path):
-                    app_path = os.path.join(folder_path, app_to_open + ".exe")
-                if not os.path.exists(app_path):
-                    app_path = os.path.join(folder_path, app_to_open + ".url")
-                if os.path.exists(app_path):
-                    try:
-                        app_path = f'"{app_path}"'
-                        subprocess.run(app_path, check=True, shell=True)
-                        self._speak(f"Currently opening {app_to_open}.")
-                    except Exception as e:
-                        self._speak(f"Failed to open {app_to_open}. Error: {str(e)}")
+        if folder_path and os.path.isdir(folder_path):
+            app_path = os.path.join(folder_path, app_to_open)
+            if not os.path.exists(app_path):
+                app_path = os.path.join(folder_path, app_to_open + ".lnk")
+            if not os.path.exists(app_path):
+                app_path = os.path.join(folder_path, app_to_open + ".exe")
+            if not os.path.exists(app_path):
+                app_path = os.path.join(folder_path, app_to_open + ".url")
+            if os.path.exists(app_path):
+                try:
+                    app_path = f'"{app_path}"'
+                    subprocess.run(app_path, check=True, shell=True)
+                    self._speak(f"Currently opening {app_to_open}.")
+                except Exception as e:
+                    self._speak(f"Failed to open {app_to_open}. Error: {str(e)}")
                 else:
                     self._speak(f"{app_to_open} does not exist in the specified folder.")
             else:
@@ -84,46 +84,35 @@ class Jarvis:
             self._speak("Apps file not found. Please set up the folder again.")
             self.prompt_user_for_apps_folder()
 
-
     def close_app(self, app_to_close):
-        try:
-            os.system(f"taskkill /f /im {app_to_close}")
-            self._speak(f"Closed {app_to_close}")
-        except Exception as e:(
-            self._speak(f"Failed to close {app_to_close}. Error: {e}"))
+        if not os.path.exists(self.apps_file):
+            self._speak(f"Error: {self.apps_file} does not exist.")
+            return
 
-        # if os.path.exists(self.apps_file):
-        #     with open(self.apps_file, 'r') as f:
-        #         folder_path = f.read().strip()
-        #
-        #     if folder_path and os.path.isdir(folder_path):
-        #         app_path = os.path.join(folder_path, app_to_close)
-        #         if not os.path.exists(app_path):
-        #             app_path = os.path.join(folder_path, app_to_close + ".lnk")
-        #         if not os.path.exists(app_path):
-        #             app_path = os.path.join(folder_path, app_to_close + ".exe")
-        #         if not os.path.exists(app_path):
-        #             app_path = os.path.join(folder_path, app_to_close + ".url")
-        #         if os.path.exists(app_path):
-        #             try:
-        #                 os.system(f"taskkill /f /im {app_to_close}")
-        #                 self._speak(f"Closed {app_to_close}")
-        #             except Exception as e:
-        #                 self._speak(f"Failed to close {app_to_close}. Error: {e}")
-        #         else:
-        #             self._speak(f"{app_to_close} does not exist in the specified folder.")
-        #     else:
-        #         self._speak("Apps folder path is invalid or not set.")
-        #         self.prompt_user_for_apps_folder()
-        # else:
-        #     self._speak("Apps file not found. Please set up the folder again.")
-        #     self.prompt_user_for_apps_folder()
-        #
-        # try:
-        #     os.system(f"taskkill /f /im {app_to_close}")
-        #     self._speak(f"Closed {app_to_close}")
-        # except Exception as e:
-        #     self._speak(f"Failed to close {app_to_close}. Error: {e}")
+        with open(self.apps_file, 'r') as f:
+            folder_path = f.read().strip()
+        if not folder_path or not os.path.isdir(folder_path):
+            self._speak(f"Error: Folder path {folder_path} is invalid.")
+            return
+
+        if folder_path and os.path.isdir(folder_path):
+            app_path = os.path.join(folder_path, app_to_close)
+            if not os.path.exists(app_path):
+                app_path = os.path.join(folder_path, app_to_close + ".lnk")
+            if not os.path.exists(app_path):
+                app_path = os.path.join(folder_path, app_to_close + ".exe")
+            if not os.path.exists(app_path):
+                app_path = os.path.join(folder_path, app_to_close + ".url")
+        for proc in psutil.process_iter(['pid', 'name']):
+            try:
+                if proc.info['name'].lower() == app_to_close.lower() or \
+                    proc.info['name'].lower() == (app_to_close + ".exe").lower():
+                    proc.terminate()
+            except psutil.NoSuchProcess:
+
+                return
+
+
 
     def open_or_close_app(self):
         self._speak("What would you like me to open or close? Please say one command at a time. or if you did not mean "
@@ -155,7 +144,6 @@ class Jarvis:
                 except sr.UnknownValueError:
                     self._speak("Sorry, I didn't understand. Could you repeat that?")
 
-
     def main_loop(self):
         self._speak("Hello, just speak my name and I will be able to assist you.")
         with sr.Microphone() as source:
@@ -183,6 +171,7 @@ class Jarvis:
                 folder_is_valid = True
             else:
                 self._speak("The folder path given does not exist. Please try again.")
+
     def save_app_paths(self, folder_path):
         try:
             with open("folder_that_leads_to_apps.txt", "w") as f:
@@ -192,8 +181,6 @@ class Jarvis:
         except Exception as e:
             self._speak("An error occurred")
             self.prompt_user_for_apps_folder()
-
-
 
 
 jarvis = Jarvis()
