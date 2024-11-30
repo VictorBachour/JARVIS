@@ -71,9 +71,9 @@ class Jarvis:
                         break
                 if app_path:
                     try:
-                        subprocess.run(f'"{app_path}"', check=True, shell=True)
-                        print('im now here')
                         self._speak(f"Currently opening {app_to_open}.")
+                        subprocess.run(f'"{app_path}"', check=True, shell=True)
+                        return
                     except Exception as e:
                         self._speak(f"Failed to open {app_to_open}. Error: {str(e)}")
 
@@ -136,6 +136,7 @@ class Jarvis:
         with sr.Microphone() as source:
             while True:
                 try:
+                    self._speak("im now listening")
                     self.recognizer.adjust_for_ambient_noise(source)
                     word = self.recognizer.listen(source)
                     text = self.recognizer.recognize_google(word).lower()
@@ -157,16 +158,19 @@ class Jarvis:
                 folder_is_valid = True
             else:
                 self._speak("The folder path given does not exist. Please try again.")
+        self.main_loop()
 
     def save_app_paths(self, folder_path):
         try:
             with open("folder_that_leads_to_apps.txt", "w") as f:
+                print(folder_path)
                 f.write(folder_path)
                 self._speak("Folder path saved successfully.")
-                self.main_loop()
+                f.close()
         except Exception as e:
             self._speak("An error occurred")
             self.prompt_user_for_apps_folder()
+
 
 
 jarvis = Jarvis()
