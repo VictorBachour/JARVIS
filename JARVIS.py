@@ -2,7 +2,7 @@ import speech_recognition as sr
 import pyttsx3
 import os
 import subprocess
-import psutil
+
 
 class Jarvis:
     def __init__(self):
@@ -17,12 +17,12 @@ class Jarvis:
                 folder_path = f.read().strip()
 
             if os.path.exists(folder_path) and os.path.isdir(folder_path):
-                self.open_app('Spotify')
+                self.main_loop()
             else:
                 self._speak("Saved folder path is invalid or does not exist.")
                 self.prompt_user_for_apps_folder()
         else:
-            self._speak("Apps file not found. Prompting user for apps folder.")
+            self._speak("Apps file not found.")
             self.prompt_user_for_apps_folder()
 
     def _speak(self, message):
@@ -50,69 +50,56 @@ class Jarvis:
 
     # prompt the user to input where his apps are and to paste the directory in command prompt this will only be done
     # once to make it done once check to see if the notepad is empty if empty prompt user if not move on to main_loop
-    def open_app(self, app_to_open):
 
+    def open_app(self, app_to_open):
         if not app_to_open:
             self._speak("No application name provided to open.")
             return
+        try:
+            folder_path = None
+            if os.path.exists(self.apps_file):
+                with open(self.apps_file, 'r') as f:
+                    folder_path = f.read().strip()
 
-        if os.path.exists(self.apps_file):
-            with open(self.apps_file, 'r') as f:
-                folder_path = f.read().strip()
+            if folder_path and os.path.isdir(folder_path):
+                valid_extensions = ["", ".lnk", ".exe", ".url"]
+                app_path = None
+                for ext in valid_extensions:
+                    potential_path = os.path.join(folder_path, app_to_open + ext)
+                    if os.path.exists(potential_path):
+                        app_path = potential_path
+                        break
+                if app_path:
+                    try:
+                        subprocess.run(f'"{app_path}"', check=True, shell=True)
+                        print('im now here')
+                        self._speak(f"Currently opening {app_to_open}.")
+                    except Exception as e:
+                        self._speak(f"Failed to open {app_to_open}. Error: {str(e)}")
 
-        if folder_path and os.path.isdir(folder_path):
-            app_path = os.path.join(folder_path, app_to_open)
-            if not os.path.exists(app_path):
-                app_path = os.path.join(folder_path, app_to_open + ".lnk")
-            if not os.path.exists(app_path):
-                app_path = os.path.join(folder_path, app_to_open + ".exe")
-            if not os.path.exists(app_path):
-                app_path = os.path.join(folder_path, app_to_open + ".url")
-            if os.path.exists(app_path):
-                try:
-                    app_path = f'"{app_path}"'
-                    subprocess.run(app_path, check=True, shell=True)
-                    self._speak(f"Currently opening {app_to_open}.")
-                except Exception as e:
-                    self._speak(f"Failed to open {app_to_open}. Error: {str(e)}")
                 else:
                     self._speak(f"{app_to_open} does not exist in the specified folder.")
             else:
                 self._speak("Apps folder path is invalid or not set.")
                 self.prompt_user_for_apps_folder()
-        else:
+        except FileNotFoundError:
             self._speak("Apps file not found. Please set up the folder again.")
             self.prompt_user_for_apps_folder()
+        except Exception as e:
+            self._speak(f"An unexpected error occurred: {str(e)}")
 
     def close_app(self, app_to_close):
-        if not os.path.exists(self.apps_file):
-            self._speak(f"Error: {self.apps_file} does not exist.")
-            return
+        if not app_to_close.lower().endswith(".exe"):
+            app_to_close += ".exe"
 
-        with open(self.apps_file, 'r') as f:
-            folder_path = f.read().strip()
-        if not folder_path or not os.path.isdir(folder_path):
-            self._speak(f"Error: Folder path {folder_path} is invalid.")
-            return
-
-        if folder_path and os.path.isdir(folder_path):
-            app_path = os.path.join(folder_path, app_to_close)
-            if not os.path.exists(app_path):
-                app_path = os.path.join(folder_path, app_to_close + ".lnk")
-            if not os.path.exists(app_path):
-                app_path = os.path.join(folder_path, app_to_close + ".exe")
-            if not os.path.exists(app_path):
-                app_path = os.path.join(folder_path, app_to_close + ".url")
-        for proc in psutil.process_iter(['pid', 'name']):
-            try:
-                if proc.info['name'].lower() == app_to_close.lower() or \
-                    proc.info['name'].lower() == (app_to_close + ".exe").lower():
-                    proc.terminate()
-            except psutil.NoSuchProcess:
-
+        tasks = os.popen('tasklist').readlines()
+        for task in tasks:
+            if app_to_close.lower() in task.lower():
+                os.system(f'taskkill /f /im {app_to_close}')
+                self._speak(f"Application {app_to_close} closed successfully.")
                 return
-
-
+        self._speak(f"Application {app_to_close} is not running.")
+        return
 
     def open_or_close_app(self):
         self._speak("What would you like me to open or close? Please say one command at a time. or if you did not mean "
@@ -149,14 +136,13 @@ class Jarvis:
         with sr.Microphone() as source:
             while True:
                 try:
-                    print("now here")
                     self.recognizer.adjust_for_ambient_noise(source)
                     word = self.recognizer.listen(source)
                     text = self.recognizer.recognize_google(word).lower()
                     if self.wake_word in text:
                         self.open_or_close_app()
                 except sr.UnknownValueError:
-                    None
+                    pass
 
     def prompt_user_for_apps_folder(self):
         folder_is_valid = False
